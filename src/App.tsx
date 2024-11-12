@@ -1,34 +1,69 @@
-import React, { HTMLProps, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactGridLayout, { Layout, WidthProvider } from 'react-grid-layout';
 import InnerHTML from 'dangerously-set-html-content'
 import clsx from "clsx"
+import { createDefaultContentMap } from './seed'
+import CodeMirror from '@uiw/react-codemirror'
+import { html } from '@codemirror/lang-html'
 
 const addNewKey = "wow"
 
 const GridLayout = WidthProvider(ReactGridLayout);
 
-const CustomGridItemComponent = React.forwardRef<HTMLDivElement, HTMLProps<HTMLDivElement> & { content?: string }>(({style, className, onMouseDown, onMouseUp, onTouchEnd, content, ...props}, ref) => {
+const CustomGridItemComponent: React.FC<{
+  content?: string
+  editing: boolean
+  editWidget: () => void
+  deleteWidget: () => void
+}> = ({
+  content, 
+  editing,
+  editWidget,
+  deleteWidget,
+}) => {
   return (
-    <div style={{...style}} className={className} ref={ref} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onTouchEnd={onTouchEnd} {...props}>
-      <div className='absolute -top-3 -left-2 m-0 handle'>
-        <button className='bg-white rounded-full inline-flex items-center justify-center text-gray-600 ring ring-offset-2 ring-gray-700 cursor-move'>
-          <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
+    <div className='grid h-full w-full'>
+      <div className='flex' style={{ gridArea: "1 / 1 / -1 / -1" }}>
+        {content && <InnerHTML className="h-full w-full grid place-items-center" html={content} />}
+        {!content && (
+          <div className='flex place-items-center'>
+            <button 
+              type='button' 
+              className='px-4 py-2 border rounded-lg border-solid border-blue'
+              onClick={editWidget}
+            >
+              Insert code
+            </button>
+          </div>
+        )}
       </div>
-      {content && <InnerHTML className="h-full w-full grid place-items-center" html={content} />}
-      {!content && (
-        <div className='h-full w-full grid place-items-center'>
-          <button className='px-4 py-2 border rounded-lg border-solid border-blue' type='button'>Insert code</button>
+      {editing && (
+        <div 
+          className='handle cursor-move flex gap-2 items-center justify-center bg-black bg-opacity-50 text-xs' 
+          style={{ gridArea: "1 / 1 / -1 / -1" }}
+        >
+          <div className='p-2 flex gap-4 bg-black shadow-lg rounded-lg'>
+            <button 
+              className='bg-blue-600 hover:bg-blue-900 px-2 py-1 rounded shadow-inner'
+              onClick={editWidget}
+            >
+              Edit
+            </button>
+            <button 
+              className='bg-red-600 hover:bg-red-900 px-2 py-1 rounded shadow-inner'
+              onClick={deleteWidget}
+            >
+              Del
+            </button>
+          </div>
         </div>
       )}
     </div>
-  );
-})
+  )
+}
 
 const App: React.FC = () => {
-  const layout: Layout[] = [
+  const defaultLayout: Layout[] = [
     { i: "top", x: 0, y: 0, w: 12, h: 1 },
     { i: "a", x: 0, y: 1, w: 6, h: 10 },
     { i: "b", x: 6, y: 1, w: 4, h: 10 },
@@ -38,9 +73,11 @@ const App: React.FC = () => {
     { i: "f", x: 10, y: 2, w: 1, h: 1 }
   ];
 
-  const [currentLayout, setCurrentLayout] = useState<Layout[]>(layout)
+  const [currentLayout, setCurrentLayout] = useState<Layout[]>(defaultLayout)
+  const [contentMap, setContentMap] = useState<Map<string, string>>(new Map(JSON.parse(localStorage.getItem('content') || "")))
   const [enableEditing, setEnableEditing] = useState(false)
   const [showToolbar, setShowToolbar] = useState(false)
+  const [currentWidget, setCurrentWidget] = useState<{key: string, content?: string}>()
 
   const toggleToolbar = () => {
     if (showToolbar) {
@@ -51,7 +88,12 @@ const App: React.FC = () => {
   }
 
   const onLayoutChange = (layout: Layout[]) => {
-    setCurrentLayout(layout)
+    //setCurrentLayout(layout)
+  }
+
+  const save = () => {
+    localStorage.setItem('layout', JSON.stringify(currentLayout))
+    localStorage.setItem('content', JSON.stringify(Array.from(contentMap.entries())))
   }
 
   const withAddLayout = (layout: Layout[]): Layout[] => {
@@ -73,213 +115,139 @@ const App: React.FC = () => {
     ]
   }
 
-  console.log(`Enable edit: ${enableEditing}`)
-  console.log(`Show toolbar: ${showToolbar}`)
+  const saveWidget = () => {
+    if (currentWidget) {
+      setContentMap(contentMap.set(currentWidget.key, currentWidget.content || ""))
+      setCurrentWidget(undefined)
+    }
+  }
 
   return (
-    <div className="w-full h-full bg-black">
-      <header className="text-slate-100 grid">
-        <div 
-          className={clsx(`
-            flex justify-between items-center 
-            bg-gradient-to-r from-pink-800 via-purple-500 to-slate-900
-            px-8 py-4
-          `,
-            {
-              "hidden": !showToolbar
-            }
-          )}
-          style={{
-            gridArea: "1 / 1 / -1 / -1"
-          }}
-        >
-          <h2 className='font-bold text-3xl font-poppins'>stockboard</h2>
-          <div className='flex gap-4'>
-          <div className='px-4 py-2 border rounded-lg border-solid border-blue-700 font-mono bg-black shadow-sm shadow-white'>
-              <button type='button' onClick={() => setEnableEditing(!enableEditing)}>[t]oggle view mode</button>
-            </div>
-            <div className='px-4 py-2 border rounded-lg border-solid border-blue-700 font-mono bg-black shadow-sm shadow-white'>
-              <button>[c]reate new</button>
-            </div>
-            <div className='px-4 py-2 border rounded-lg border-solid border-blue-700 font-mono bg-black shadow-sm shadow-white'>
-              <button>login</button>
+    <div className="min-h-screen w-full h-full bg-black">
+      <header 
+        className="
+          text-slate-300
+          bg-gradient-to-r from-pink-800 via-purple-500 to-slate-900"
+      >
+        {showToolbar && (
+          <div className='flex justify-between items-center px-8 py-4'>
+            <h2 className='font-bold font-poppins text-3xl'>stockdeck</h2>
+            <div className='flex gap-4'>
+              <div className='px-4 py-2 border rounded-lg border-solid font-mono bg-black shadow-sm'>
+                <button type='button' onClick={() => setEnableEditing(!enableEditing)}>[t]oggle view mode</button>
+              </div>
+              <div className='px-4 py-2 border rounded-lg border-solid font-mono bg-black shadow-sm'>
+                <button>[c]reate new</button>
+              </div>
+              <div className='px-4 py-2 border rounded-lg border-solid font-mono bg-black shadow-sm'>
+                <button type='button' onClick={save}>[s]ave</button>
+              </div>
+              <div className='px-4 py-2 border rounded-lg border-solid font-mono bg-black shadow-sm'>
+                <button>login</button>
+              </div>
             </div>
           </div>
-        </div>
-        <div 
-          className={clsx("flex items-end justify-center -bottom-4 relative pointer-events-none", {
-            "h-0": !showToolbar
-          })} 
-          style={{ gridArea: "1 / 1 / -1 / -1" }}>
+        )}
+        <div className={clsx("flex items-center justify-center h-4", {
+          "!h-0": showToolbar
+        })}>
           <button
-            className="
-              h-8 w-8 p-4
-              bg-black rounded-full text-gray-600 ring ring-white
-              inline-flex items-center justify-center
-              pointer-events-auto"
+            className={clsx(`
+              h-4 w-4 p-4 z-50
+              bg-white rounded-full text-gray-600 ring ring-black
+              flex items-center justify-center relative -bottom-2`,
+              {
+                "!-bottom-0": showToolbar
+              }
+            )}
             onClick={toggleToolbar}
           >
-          🔻
+            {showToolbar ? "☝" : "👇"}
           </button>
         </div>
       </header>
+
       <div className='bg-black text-white m-2'>
         <GridLayout 
           className={clsx("[&>*]:text-center", {
             "[&>*]:border [&>*]:border-solid": enableEditing,
-            "[&_div.handle]:hidden": !enableEditing
           })} 
           rowHeight={60}
           onLayoutChange={onLayoutChange} 
           cols={12} 
           autoSize
-          layout={withAddLayout(currentLayout)}
+          isResizable={enableEditing}
+          layout={enableEditing ? withAddLayout(currentLayout) : currentLayout}
           draggableHandle=".handle"
         >
-            <CustomGridItemComponent key="top" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-  {
-  "symbols": [
-    {
-      "proName": "FOREXCOM:SPXUSD",
-      "title": "S&P 500"
-    },
-    {
-      "proName": "FOREXCOM:NSXUSD",
-      "title": "US 100"
-    },
-    {
-      "proName": "FX_IDC:EURUSD",
-      "title": "EUR to USD"
-    },
-    {
-      "proName": "BITSTAMP:BTCUSD",
-      "title": "Bitcoin"
-    },
-    {
-      "proName": "BITSTAMP:ETHUSD",
-      "title": "Ethereum"
-    }
-  ],
-  "showSymbolLogo": true,
-  "colorTheme": "dark",
-  "isTransparent": false,
-  "displayMode": "adaptive",
-  "locale": "en"
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-            <CustomGridItemComponent key="a" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
-  {
-  "exchanges": [],
-  "dataSource": "AllSWE",
-  "grouping": "sector",
-  "blockSize": "market_cap_basic",
-  "blockColor": "change",
-  "locale": "en",
-  "symbolUrl": "",
-  "colorTheme": "dark",
-  "hasTopBar": false,
-  "isDataSetEnabled": false,
-  "isZoomEnabled": true,
-  "hasSymbolTooltip": true,
-  "width": "100%",
-  "height": "100%"
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-            <CustomGridItemComponent key="b" content={`
-              <!-- TradingView Widget BEGIN -->
-              <div class="tradingview-widget-container">
-                <div class="tradingview-widget-container__widget"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-hotlists.js" async>
-                {
-                "colorTheme": "dark",
-                "dateRange": "12M",
-                "exchange": "US",
-                "showChart": true,
-                "locale": "en",
-                "largeChartUrl": "",
-                "isTransparent": false,
-                "showSymbolLogo": false,
-                "showFloatingTooltip": false,
-                "width": "100%",
-                "height": "100%",
-                "plotLineColorGrowing": "rgba(41, 98, 255, 1)",
-                "plotLineColorFalling": "rgba(41, 98, 255, 1)",
-                "gridLineColor": "rgba(42, 46, 57, 0)",
-                "scaleFontColor": "rgba(134, 137, 147, 1)",
-                "belowLineFillColorGrowing": "rgba(41, 98, 255, 0.12)",
-                "belowLineFillColorFalling": "rgba(41, 98, 255, 0.12)",
-                "belowLineFillColorGrowingBottom": "rgba(41, 98, 255, 0)",
-                "belowLineFillColorFallingBottom": "rgba(41, 98, 255, 0)",
-                "symbolActiveColor": "rgba(41, 98, 255, 0.12)"
-              }
-                </script>
-              </div>
-              <!-- TradingView Widget END -->
-              `
-            } />
-          <CustomGridItemComponent key="c" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
-  {
-  "symbol": "FX:EURUSD",
-  "width": "100%",
-  "height": "100%",
-  "colorTheme": "dark",
-  "isTransparent": false,
-  "locale": "en"
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-          <CustomGridItemComponent key="d" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
-  {
-  "symbol": "OMXSTO:INVE_B",
-  "width": "100%",
-  "height": "100%",
-  "colorTheme": "dark",
-  "isTransparent": false,
-  "locale": "en"
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-          <CustomGridItemComponent key="e" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-  {
-  "symbol": "OMXSTO:SX3010PI",
-  "width": "100%",
-  "height": "100%",
-  "locale": "en",
-  "dateRange": "12M",
-  "colorTheme": "dark",
-  "isTransparent": false,
-  "autosize": true,
-  "largeChartUrl": ""
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-          <CustomGridItemComponent key="f" />
-          <div key={addNewKey} className='grid place-items-center'>
-            <button className=''>Add new</button>
-          </div>
+          {currentLayout.map(({i}) => (
+            <div key={i}>
+              <CustomGridItemComponent 
+                content={contentMap.get(i)} 
+                editing={enableEditing}
+                editWidget={() => setCurrentWidget({ key: i, content: contentMap.get(i) })}
+                deleteWidget={() => setCurrentLayout(currentLayout.filter(x => x.i !== i))}
+              />
+            </div>
+          ))}
+          {enableEditing && (
+            <div key={addNewKey} className='grid place-items-center'>
+              <button className=''>Add new</button>
+            </div>
+          )}
         </GridLayout>
+      </div>
+      <div className={clsx("relative z-10", {
+        "hidden": !currentWidget
+      })}>
+        <div className="fixed inset-0 overflow-y-auto backdrop-brightness-50">
+          <div className="flex min-h-full items-center justify-center p-4 text-center">
+              <div className="w-full max-w-md transform overflow-hidden rounded-2xl bg-white p-6 text-center">
+                <h3
+                  className="text-lg font-medium leading-6 text-gray-900"
+                >
+                  Add/edit widget
+                </h3>
+                <div className="mt-2 text-left font-mono text-xs">
+                  <textarea 
+                    spellCheck={false}
+                    wrap='soft'
+                    value={currentWidget?.content} 
+                    onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setCurrentWidget({ key: currentWidget?.key || "", content: e.target.value || "" })}
+                    rows={20}
+                    className="w-full h-full p-2"
+                  />
+                  {/*<CodeMirror
+                    className='w-full h-full'
+                    indentWithTab={false}
+                    minHeight='200px'
+                    extensions={[html()]}
+                    value={currentWidget?.content}
+                    onChange={(value: string, viewUpdate) => {
+                      setCurrentWidget({ key: currentWidget?.key || "", content: value })
+                    }}
+                  />*/}
+
+                </div>
+
+                <div className="mt-4 flex justify-between font-medium">
+                  <button
+                    type="button"
+                    onClick={saveWidget}
+                    className="justify-center rounded-md border border-transparent bg-blue-100 text-blue-900 hover:bg-blue-200 px-4 py-2"
+                  >
+                    Save
+                  </button>
+                  <button
+                    className='bg-gray-300 px-4 py-2 text-black rounded-md'
+                    onClick={() => { setCurrentWidget(undefined) }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+          </div>
+        </div>
       </div>
     </div>
   );
