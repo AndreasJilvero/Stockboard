@@ -1,57 +1,34 @@
-import React, { HTMLProps, useState } from 'react';
-import ReactGridLayout, { Layout, WidthProvider } from 'react-grid-layout';
-import InnerHTML from 'dangerously-set-html-content'
+import React, { useEffect, useState } from 'react'
+import ReactGridLayout, { Layout, WidthProvider } from 'react-grid-layout'
 import clsx from "clsx"
 
-const addNewKey = "wow"
+import CustomGridItemComponent from './components/CustomGridItemComponent'
+import FancyButtonComponent from './components/FancyButtonComponent'
+import { getLayoutStore, setLayoutStore } from './store/store'
+
+const ADD_NEW_KEY = "wow"
 
 const GridLayout = WidthProvider(ReactGridLayout);
 
-const CustomGridItemComponent = React.forwardRef<HTMLDivElement, HTMLProps<HTMLDivElement> & { content?: string }>(({style, className, onMouseDown, onMouseUp, onTouchEnd, content, ...props}, ref) => {
-  return (
-    <div style={{...style}} className={className} ref={ref} onMouseDown={onMouseDown} onMouseUp={onMouseUp} onTouchEnd={onTouchEnd} {...props}>
-      <div className='absolute -top-3 -left-2 m-0 handle'>
-        <button className='bg-white rounded-full inline-flex items-center justify-center text-gray-600 ring ring-offset-2 ring-gray-700 cursor-move'>
-          <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      </div>
-      {content && <InnerHTML className="h-full w-full grid place-items-center" html={content} />}
-      {!content && (
-        <div className='h-full w-full grid place-items-center'>
-          <button className='px-4 py-2 border rounded-lg border-solid border-blue' type='button'>Insert code</button>
-        </div>
-      )}
-    </div>
-  );
-})
-
 const App: React.FC = () => {
-  const layout: Layout[] = [
+  const defaultLayout: Layout[] = [
     { i: "top", x: 0, y: 0, w: 12, h: 1 },
     { i: "a", x: 0, y: 1, w: 6, h: 10 },
     { i: "b", x: 6, y: 1, w: 4, h: 10 },
-    { i: "c", x: 10, y: 1, w: 2, h: 2 },
-    { i: "d", x: 10, y: 1, w: 2, h: 2 },
+    { i: "eurusd", x: 10, y: 1, w: 2, h: 2 },
+    { i: "inve", x: 10, y: 1, w: 2, h: 2 },
     { i: "e", x: 10, y: 2, w: 2, h: 3 },
     { i: "f", x: 10, y: 2, w: 1, h: 1 }
   ];
 
-  const [currentLayout, setCurrentLayout] = useState<Layout[]>(layout)
+  const storedLayout = getLayoutStore()
+  const [currentLayout, setCurrentLayout] = useState<Layout[]>(storedLayout || defaultLayout)
   const [enableEditing, setEnableEditing] = useState(false)
   const [showToolbar, setShowToolbar] = useState(false)
 
-  const toggleToolbar = () => {
-    if (showToolbar) {
-      setEnableEditing(false)
-    }
-
-    setShowToolbar(!showToolbar)
-  }
-
   const onLayoutChange = (layout: Layout[]) => {
     setCurrentLayout(layout)
+    setLayoutStore(layout)
   }
 
   const withAddLayout = (layout: Layout[]): Layout[] => {
@@ -62,9 +39,9 @@ const App: React.FC = () => {
     const last = layout[layout.length-1]
 
     return [
-      ...currentLayout,
+      ...layout,
       {
-        i: addNewKey,
+        i: ADD_NEW_KEY,
         x: (last?.x || 0) + 1,
         y: (last?.y || 0),
         w: 1,
@@ -73,16 +50,39 @@ const App: React.FC = () => {
     ]
   }
 
-  console.log(`Enable edit: ${enableEditing}`)
-  console.log(`Show toolbar: ${showToolbar}`)
+  const addCell = () => {
+    const cell = withAddLayout(currentLayout).pop()
+
+    cell!.i = `${currentLayout.length + 2}`
+
+    setCurrentLayout([ ...currentLayout, cell! ])
+  }
+
+  const keyListener = (ev: globalThis.KeyboardEvent) => {
+    if (ev.altKey) {
+      if (ev.code === "KeyT") {
+        setEnableEditing(value => !value)
+      }
+      
+      if (ev.code === "KeyS") {
+        setShowToolbar(value => !value)
+      }
+    }
+  }
+
+  useEffect(() => {
+    document.addEventListener('keydown', keyListener)
+
+    return () => document.removeEventListener('keydown', keyListener)
+  }, [])
 
   return (
-    <div className="w-full h-full bg-black">
+    <div className="w-full min-h-screen bg-black">
       <header className="text-slate-100 grid">
         <div 
           className={clsx(`
             flex justify-between items-center 
-            bg-gradient-to-r from-pink-800 via-purple-500 to-slate-900
+            bg-gradient-to-r from-slate-900 via-green-500 to-slate-900
             px-8 py-4
           `,
             {
@@ -95,15 +95,9 @@ const App: React.FC = () => {
         >
           <h2 className='font-bold text-3xl font-poppins'>stockboard</h2>
           <div className='flex gap-4'>
-          <div className='px-4 py-2 border rounded-lg border-solid border-blue-700 font-mono bg-black shadow-sm shadow-white'>
-              <button type='button' onClick={() => setEnableEditing(!enableEditing)}>[t]oggle view mode</button>
-            </div>
-            <div className='px-4 py-2 border rounded-lg border-solid border-blue-700 font-mono bg-black shadow-sm shadow-white'>
-              <button>[c]reate new</button>
-            </div>
-            <div className='px-4 py-2 border rounded-lg border-solid border-blue-700 font-mono bg-black shadow-sm shadow-white'>
-              <button>login</button>
-            </div>
+            <FancyButtonComponent onClick={() => setEnableEditing(!enableEditing)}>to[g]gle view mode</FancyButtonComponent>
+            <FancyButtonComponent>[c]reate new</FancyButtonComponent>
+            <FancyButtonComponent>[l]ogin</FancyButtonComponent>
           </div>
         </div>
         <div 
@@ -117,7 +111,7 @@ const App: React.FC = () => {
               bg-black rounded-full text-gray-600 ring ring-white
               inline-flex items-center justify-center
               pointer-events-auto"
-            onClick={toggleToolbar}
+            onClick={() => setShowToolbar(value => !value)}
           >
           🔻
           </button>
@@ -227,7 +221,7 @@ const App: React.FC = () => {
               <!-- TradingView Widget END -->
               `
             } />
-          <CustomGridItemComponent key="c" content={`<!-- TradingView Widget BEGIN -->
+          <CustomGridItemComponent key="eurusd" content={`<!-- TradingView Widget BEGIN -->
 <div class="tradingview-widget-container">
   <div class="tradingview-widget-container__widget"></div>
   <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
@@ -242,7 +236,7 @@ const App: React.FC = () => {
   </script>
 </div>
 <!-- TradingView Widget END -->`} />
-          <CustomGridItemComponent key="d" content={`<!-- TradingView Widget BEGIN -->
+          <CustomGridItemComponent key="inve" content={`<!-- TradingView Widget BEGIN -->
 <div class="tradingview-widget-container">
   <div class="tradingview-widget-container__widget"></div>
   <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
@@ -276,8 +270,8 @@ const App: React.FC = () => {
 </div>
 <!-- TradingView Widget END -->`} />
           <CustomGridItemComponent key="f" />
-          <div key={addNewKey} className='grid place-items-center'>
-            <button className=''>Add new</button>
+          <div key={ADD_NEW_KEY} className='grid place-items-center'>
+            <FancyButtonComponent onClick={addCell}>add new</FancyButtonComponent>
           </div>
         </GridLayout>
       </div>
