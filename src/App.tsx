@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import ReactGridLayout, { Layout, WidthProvider } from 'react-grid-layout'
 import clsx from "clsx"
-
+import InnerHTML from 'dangerously-set-html-content'
+import { v4 as uuidv4 } from 'uuid';
+import { getLayouts, setLayouts } from './store/layoutStore'
+import { getScripts } from './store/scriptStore'
 import CustomGridItemComponent from './components/CustomGridItemComponent'
 import FancyButtonComponent from './components/FancyButtonComponent'
-import { getLayoutStore, setLayoutStore } from './store/store'
 
 const ADD_NEW_KEY = "wow"
 
@@ -18,44 +20,22 @@ const App: React.FC = () => {
     { i: "eurusd", x: 10, y: 1, w: 2, h: 2 },
     { i: "inve", x: 10, y: 1, w: 2, h: 2 },
     { i: "e", x: 10, y: 2, w: 2, h: 3 },
-    { i: "f", x: 10, y: 2, w: 1, h: 1 }
+    { i: "empty", x: 10, y: 2, w: 1, h: 1 },
   ];
 
-  const storedLayout = getLayoutStore()
-  const [currentLayout, setCurrentLayout] = useState<Layout[]>(storedLayout || defaultLayout)
+  const storedLayout = getLayouts()
+  const storedScripts = getScripts()
+  const [currentLayout, setCurrentLayout] = useState<Layout[]>(/*storedLayout || */defaultLayout)
   const [enableEditing, setEnableEditing] = useState(false)
   const [showToolbar, setShowToolbar] = useState(false)
 
+  const removeCell = (id: string) => {
+    setCurrentLayout(oldValue => oldValue.filter(x => x.i !== id))
+  }
+
   const onLayoutChange = (layout: Layout[]) => {
     setCurrentLayout(layout)
-    setLayoutStore(layout)
-  }
-
-  const withAddLayout = (layout: Layout[]): Layout[] => {
-    if (!layout) {
-      return []
-    }
-
-    const last = layout[layout.length-1]
-
-    return [
-      ...layout,
-      {
-        i: ADD_NEW_KEY,
-        x: (last?.x || 0) + 1,
-        y: (last?.y || 0),
-        w: 1,
-        h: 1
-      }
-    ]
-  }
-
-  const addCell = () => {
-    const cell = withAddLayout(currentLayout).pop()
-
-    cell!.i = `${currentLayout.length + 2}`
-
-    setCurrentLayout([ ...currentLayout, cell! ])
+    setLayouts(layout)
   }
 
   const keyListener = (ev: globalThis.KeyboardEvent) => {
@@ -66,6 +46,25 @@ const App: React.FC = () => {
       
       if (ev.code === "KeyS") {
         setShowToolbar(value => !value)
+      }
+
+      if (ev.code === "KeyA") {
+        setCurrentLayout(oldValue => {
+          console.log(oldValue)
+          const last = oldValue[oldValue.length-1]
+    
+          last!.i = uuidv4()
+
+          const cell = {
+            i: ADD_NEW_KEY,
+            x: 999,
+            y: 999,
+            w: 1,
+            h: 1
+          } as Layout
+    
+          return [...oldValue, cell]
+        })
       }
     }
   }
@@ -94,10 +93,10 @@ const App: React.FC = () => {
           }}
         >
           <h2 className='font-bold text-3xl font-poppins'>stockboard</h2>
-          <div className='flex gap-4'>
-            <FancyButtonComponent onClick={() => setEnableEditing(!enableEditing)}>to[g]gle view mode</FancyButtonComponent>
-            <FancyButtonComponent>[c]reate new</FancyButtonComponent>
-            <FancyButtonComponent>[l]ogin</FancyButtonComponent>
+          <div className='flex gap-4 items-center'>
+            <span>alt+</span>
+            <FancyButtonComponent>[b]oards</FancyButtonComponent>
+            <FancyButtonComponent onClick={() => setEnableEditing(!enableEditing)}>[t]oggle editing</FancyButtonComponent>
           </div>
         </div>
         <div 
@@ -124,155 +123,24 @@ const App: React.FC = () => {
             "[&_div.handle]:hidden": !enableEditing
           })} 
           rowHeight={60}
+          layout={currentLayout}
           onLayoutChange={onLayoutChange} 
           cols={12} 
-          autoSize
-          layout={withAddLayout(currentLayout)}
+          isResizable={enableEditing}
           draggableHandle=".handle"
         >
-            <CustomGridItemComponent key="top" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-ticker-tape.js" async>
-  {
-  "symbols": [
-    {
-      "proName": "FOREXCOM:SPXUSD",
-      "title": "S&P 500"
-    },
-    {
-      "proName": "FOREXCOM:NSXUSD",
-      "title": "US 100"
-    },
-    {
-      "proName": "FX_IDC:EURUSD",
-      "title": "EUR to USD"
-    },
-    {
-      "proName": "BITSTAMP:BTCUSD",
-      "title": "Bitcoin"
-    },
-    {
-      "proName": "BITSTAMP:ETHUSD",
-      "title": "Ethereum"
-    }
-  ],
-  "showSymbolLogo": true,
-  "colorTheme": "dark",
-  "isTransparent": false,
-  "displayMode": "adaptive",
-  "locale": "en"
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-            <CustomGridItemComponent key="a" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js" async>
-  {
-  "exchanges": [],
-  "dataSource": "AllSWE",
-  "grouping": "sector",
-  "blockSize": "market_cap_basic",
-  "blockColor": "change",
-  "locale": "en",
-  "symbolUrl": "",
-  "colorTheme": "dark",
-  "hasTopBar": false,
-  "isDataSetEnabled": false,
-  "isZoomEnabled": true,
-  "hasSymbolTooltip": true,
-  "width": "100%",
-  "height": "100%"
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-            <CustomGridItemComponent key="b" content={`
-              <!-- TradingView Widget BEGIN -->
-              <div class="tradingview-widget-container">
-                <div class="tradingview-widget-container__widget"></div>
-                <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-hotlists.js" async>
-                {
-                "colorTheme": "dark",
-                "dateRange": "12M",
-                "exchange": "US",
-                "showChart": true,
-                "locale": "en",
-                "largeChartUrl": "",
-                "isTransparent": false,
-                "showSymbolLogo": false,
-                "showFloatingTooltip": false,
-                "width": "100%",
-                "height": "100%",
-                "plotLineColorGrowing": "rgba(41, 98, 255, 1)",
-                "plotLineColorFalling": "rgba(41, 98, 255, 1)",
-                "gridLineColor": "rgba(42, 46, 57, 0)",
-                "scaleFontColor": "rgba(134, 137, 147, 1)",
-                "belowLineFillColorGrowing": "rgba(41, 98, 255, 0.12)",
-                "belowLineFillColorFalling": "rgba(41, 98, 255, 0.12)",
-                "belowLineFillColorGrowingBottom": "rgba(41, 98, 255, 0)",
-                "belowLineFillColorFallingBottom": "rgba(41, 98, 255, 0)",
-                "symbolActiveColor": "rgba(41, 98, 255, 0.12)"
-              }
-                </script>
-              </div>
-              <!-- TradingView Widget END -->
-              `
-            } />
-          <CustomGridItemComponent key="eurusd" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
-  {
-  "symbol": "FX:EURUSD",
-  "width": "100%",
-  "height": "100%",
-  "colorTheme": "dark",
-  "isTransparent": false,
-  "locale": "en"
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-          <CustomGridItemComponent key="inve" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-single-quote.js" async>
-  {
-  "symbol": "OMXSTO:INVE_B",
-  "width": "100%",
-  "height": "100%",
-  "colorTheme": "dark",
-  "isTransparent": false,
-  "locale": "en"
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-          <CustomGridItemComponent key="e" content={`<!-- TradingView Widget BEGIN -->
-<div class="tradingview-widget-container">
-  <div class="tradingview-widget-container__widget"></div>
-  <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
-  {
-  "symbol": "OMXSTO:SX3010PI",
-  "width": "100%",
-  "height": "100%",
-  "locale": "en",
-  "dateRange": "12M",
-  "colorTheme": "dark",
-  "isTransparent": false,
-  "autosize": true,
-  "largeChartUrl": ""
-}
-  </script>
-</div>
-<!-- TradingView Widget END -->`} />
-          <CustomGridItemComponent key="f" />
-          <div key={ADD_NEW_KEY} className='grid place-items-center'>
-            <FancyButtonComponent onClick={addCell}>add new</FancyButtonComponent>
-          </div>
+          {currentLayout.map(item => 
+            <div key={item.i} className={clsx({
+              "handle cursor-move": enableEditing
+            })}>
+              {enableEditing && <button onClick={() => removeCell(item.i)} className='absolute right-0 border border-white font-mono bg-black px-2'>×</button>}
+              {storedScripts[item.i] && (
+                <InnerHTML html={storedScripts[item.i]} className={clsx("h-full w-full grid place-items-center overflow-hidden", {
+                  "pointer-events-none": enableEditing
+                })} />
+              )}
+            </div>
+          )}
         </GridLayout>
       </div>
     </div>

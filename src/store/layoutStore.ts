@@ -1,12 +1,11 @@
-import Cookies from "js-cookie";
 import { Layout } from "react-grid-layout";
 
 const KEY = "Layout"
 
 type StoredLayout = Pick<Layout, "i" | "x" | "y" | "w" | "h">
 
-export const getLayoutStore = (): Layout[] | null => {
-    const value = Cookies.get(KEY)
+export const getLayouts = (): Layout[] | null => {
+    const value = global.localStorage.getItem(KEY)
     const values = value ? JSON.parse(value) : null
 
     if (values) {
@@ -28,7 +27,7 @@ export const getLayoutStore = (): Layout[] | null => {
     return null
 }
 
-export const setLayoutStore = (layout: Layout[]) => {
+export const setLayouts = (layout: Layout[]) => {
     const values = layout.map(x => {
         const value: StoredLayout = {
             i: x.i,
@@ -41,5 +40,5 @@ export const setLayoutStore = (layout: Layout[]) => {
         return value
     })
 
-    Cookies.set(KEY, JSON.stringify(values))
+    global.localStorage.setItem(KEY, JSON.stringify(values))
 }
