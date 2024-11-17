@@ -1,16 +1,16 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import ReactGridLayout, { Layout, WidthProvider } from 'react-grid-layout'
 import clsx from "clsx"
 import InnerHTML from 'dangerously-set-html-content'
 import { v4 as uuidv4 } from 'uuid';
 import { getLayouts, setLayouts } from './store/layoutStore'
 import { getScripts } from './store/scriptStore'
-import CustomGridItemComponent from './components/CustomGridItemComponent'
-import FancyButtonComponent from './components/FancyButtonComponent'
+import BarButton from './components/BarButton'
+import Board from './components/Board';
+import { AppContext } from './contexts/AppContext';
+import { BoardType } from './types/board';
 
 const ADD_NEW_KEY = "wow"
-
-const GridLayout = WidthProvider(ReactGridLayout);
 
 const App: React.FC = () => {
   const defaultLayout: Layout[] = [
@@ -23,34 +23,50 @@ const App: React.FC = () => {
     { i: "empty", x: 10, y: 2, w: 1, h: 1 },
   ];
 
-  const storedLayout = getLayouts()
-  const storedScripts = getScripts()
+  const defaultBoard: BoardType = { id: "1", name: "Start", layout: defaultLayout }
+  const [showBoards, setShowBoards] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [currentBoard, setCurrentBoard] = useState<BoardType>(defaultBoard)
+  const [boards, setBoards] = useState<BoardType[]>([defaultBoard])
   const [currentLayout, setCurrentLayout] = useState<Layout[]>(/*storedLayout || */defaultLayout)
-  const [enableEditing, setEnableEditing] = useState(false)
-  const [showToolbar, setShowToolbar] = useState(false)
 
-  const removeCell = (id: string) => {
-    setCurrentLayout(oldValue => oldValue.filter(x => x.i !== id))
+  const createBoard = () => {
+    setBoards(oldVal => [...oldVal, { id: `${oldVal.length + 1}`, name: `Board ${oldVal.length + 1}` }])
   }
 
-  const onLayoutChange = (layout: Layout[]) => {
-    setCurrentLayout(layout)
-    setLayouts(layout)
+  const setBoard = (board: BoardType) => {
+    setCurrentBoard(board)
+    setCurrentLayout([])
   }
 
   const keyListener = (ev: globalThis.KeyboardEvent) => {
     if (ev.altKey) {
       if (ev.code === "KeyT") {
-        setEnableEditing(value => !value)
+        setEditing(value => !value)
       }
-      
-      if (ev.code === "KeyS") {
-        setShowToolbar(value => !value)
+
+      if (ev.code === "KeyC") {
+        createBoard()
+      }
+
+      if (ev.code === "KeyB") {
+        setShowBoards(value => !value)
       }
 
       if (ev.code === "KeyA") {
         setCurrentLayout(oldValue => {
-          console.log(oldValue)
+          if (oldValue.length === 0) {
+            const cell = {
+              i: ADD_NEW_KEY,
+              x: 0,
+              y: 0,
+              w: 1,
+              h: 1
+            } as Layout
+  
+            return [cell]
+          }
+
           const last = oldValue[oldValue.length-1]
     
           last!.i = uuidv4()
@@ -66,6 +82,12 @@ const App: React.FC = () => {
           return [...oldValue, cell]
         })
       }
+
+      boards.forEach((item, i) => {
+        if (ev.key === item.id) {
+          setBoard(item)
+        }
+      })
     }
   }
 
@@ -73,78 +95,42 @@ const App: React.FC = () => {
     document.addEventListener('keydown', keyListener)
 
     return () => document.removeEventListener('keydown', keyListener)
-  }, [])
+  })
 
   return (
-    <div className="w-full min-h-screen bg-black">
-      <header className="text-slate-100 grid">
-        <div 
-          className={clsx(`
-            flex justify-between items-center 
-            bg-gradient-to-r from-slate-900 via-green-500 to-slate-900
-            px-8 py-4
-          `,
-            {
-              "hidden": !showToolbar
-            }
-          )}
-          style={{
-            gridArea: "1 / 1 / -1 / -1"
-          }}
+    <AppContext.Provider value={{ editing }}>
+      <div className="w-full min-h-screen bg-black font-mono">
+        <header className="
+          px-2
+          text-slate-100 text-sm
+          bg-gradient-to-r from-slate-900 via-green-500 to-slate-900"
         >
-          <h2 className='font-bold text-3xl font-poppins'>stockboard</h2>
-          <div className='flex gap-4 items-center'>
-            <span>alt+</span>
-            <FancyButtonComponent>[b]oards</FancyButtonComponent>
-            <FancyButtonComponent onClick={() => setEnableEditing(!enableEditing)}>[t]oggle editing</FancyButtonComponent>
+          <div className="flex justify-between items-center py-1">
+            <h2 className='font-bold text-xl font-poppins'>stockboard</h2>
+            <h3 className='text-lg px-2 rounded-lg bg-slate-950'>Current board: {currentBoard.name}</h3>
+            <div className='flex gap-1 items-center'>
+              <BarButton shortcut='b'>oards</BarButton>
+              <BarButton shortcut='t' onClick={() => setEditing(!editing)}>oggle editing</BarButton>
+            </div>
           </div>
-        </div>
-        <div 
-          className={clsx("flex items-end justify-center -bottom-4 relative pointer-events-none", {
-            "h-0": !showToolbar
-          })} 
-          style={{ gridArea: "1 / 1 / -1 / -1" }}>
-          <button
-            className="
-              h-8 w-8 p-4
-              bg-black rounded-full text-gray-600 ring ring-white
-              inline-flex items-center justify-center
-              pointer-events-auto"
-            onClick={() => setShowToolbar(value => !value)}
-          >
-          🔻
-          </button>
-        </div>
-      </header>
-      <div className='bg-black text-white m-2'>
-        <GridLayout 
-          className={clsx("[&>*]:text-center", {
-            "[&>*]:border [&>*]:border-solid": enableEditing,
-            "[&_div.handle]:hidden": !enableEditing
-          })} 
-          rowHeight={60}
-          layout={currentLayout}
-          onLayoutChange={onLayoutChange} 
-          cols={12} 
-          isResizable={enableEditing}
-          draggableHandle=".handle"
-        >
-          {currentLayout.map(item => 
-            <div key={item.i} className={clsx({
-              "handle cursor-move": enableEditing
-            })}>
-              {enableEditing && <button onClick={() => removeCell(item.i)} className='absolute right-0 border border-white font-mono bg-black px-2'>×</button>}
-              {storedScripts[item.i] && (
-                <InnerHTML html={storedScripts[item.i]} className={clsx("h-full w-full grid place-items-center overflow-hidden", {
-                  "pointer-events-none": enableEditing
-                })} />
-              )}
+          {showBoards && boards && (
+            <div className='py-1 flex flex-wrap gap-1'>
+              {boards.map((item, i) => (
+                <BarButton onClick={() => setBoard(item)} shortcut={item.id} className='px-2 py-1 bg-slate-950 border-2'>
+                  {item.name}
+                </BarButton>
+              ))}
+              <BarButton onClick={createBoard} shortcut='c' className='px-2 py-1 bg-slate-950 border-2'>
+                reate new
+              </BarButton>
             </div>
           )}
-        </GridLayout>
+        </header>
+
+        <Board board={currentBoard} layout={currentLayout} setLayout={layout => setCurrentLayout(layout)} />
       </div>
-    </div>
-  );
+    </AppContext.Provider>
+  )
 }
 
 export default App;
