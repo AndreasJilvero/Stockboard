@@ -1,9 +1,7 @@
-import { Layout } from "react-grid-layout"
-import { Script } from "./script"
+export const DEFAULT_ID = "1"
+export const DEFAULT_NAME = "Start"
 
 export type BoardType = {
   id: string
   name: string
-  layout: Layout[]
-  scripts: Script[]
 }

@@ -1,9 +1,29 @@
+import { DEFAULT_ID } from "../types/board"
 import { Script } from "../types/script"
 
 const KEY = "Scripts"
 
-export const getDefaultScripts = (): Script[] => {
-  return [{
+const createKey = (board: string) => `${KEY}-${board}`
+
+export const getScripts = (board: string): Script[] | null => {
+  const val = globalThis.localStorage.getItem(createKey(board))
+
+  if (val) {
+    return JSON.parse(val)
+  }
+
+  return null
+}
+
+export const saveScripts = (board: string, scripts: Script[]) => {
+  const val = JSON.stringify(scripts)
+
+  globalThis.localStorage.setItem(createKey(board), val)
+}
+
+export const DEFAULT_SCRIPTS: Script[] = 
+  [{
+    board: DEFAULT_ID,
     cell: "eurusd",
     script: `
       <!-- TradingView Widget BEGIN -->
@@ -22,6 +42,7 @@ export const getDefaultScripts = (): Script[] => {
       </div>
       <!-- TradingView Widget END -->`,
   }, {
+    board: DEFAULT_ID,
     cell: "inve",
     script: `
       <!-- TradingView Widget BEGIN -->
@@ -40,6 +61,7 @@ export const getDefaultScripts = (): Script[] => {
       </div>
       <!-- TradingView Widget END -->`,
   }, {
+    board: DEFAULT_ID,
     cell: "e",
     script: `
       <!-- TradingView Widget BEGIN -->
@@ -61,6 +83,7 @@ export const getDefaultScripts = (): Script[] => {
       </div>
       <!-- TradingView Widget END -->`,
   }, {
+    board: DEFAULT_ID,
     cell: "b",
     script: `
       <!-- TradingView Widget BEGIN -->
@@ -93,6 +116,7 @@ export const getDefaultScripts = (): Script[] => {
       </div>
       <!-- TradingView Widget END -->`,
   }, {
+    board: DEFAULT_ID,
     cell: "a",
     script: `
       <!-- TradingView Widget BEGIN -->
@@ -119,6 +143,7 @@ export const getDefaultScripts = (): Script[] => {
       </div>
       <!-- TradingView Widget END -->`,
   }, {
+    board: DEFAULT_ID,
     cell: "top", 
     script: `
       <!-- TradingView Widget BEGIN -->
@@ -158,4 +183,3 @@ export const getDefaultScripts = (): Script[] => {
       </div>
       <!-- TradingView Widget END -->`
   }]
-}

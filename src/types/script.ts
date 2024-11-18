@@ -1,6 +1,5 @@
-import { Layout } from "react-grid-layout"
-
 export type Script = {
+  board: string
   cell: string
   script: string
 }
