@@ -1,8 +1,11 @@
+import { Script } from "../types/script"
+
 const KEY = "Scripts"
 
-export const getScripts = (): {[key: string]: string} => {
-  return {
-    "eurusd": `
+export const getDefaultScripts = (): Script[] => {
+  return [{
+    cell: "eurusd",
+    script: `
       <!-- TradingView Widget BEGIN -->
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
@@ -18,7 +21,9 @@ export const getScripts = (): {[key: string]: string} => {
         </script>
       </div>
       <!-- TradingView Widget END -->`,
-    "inve": `
+  }, {
+    cell: "inve",
+    script: `
       <!-- TradingView Widget BEGIN -->
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
@@ -34,7 +39,9 @@ export const getScripts = (): {[key: string]: string} => {
         </script>
       </div>
       <!-- TradingView Widget END -->`,
-    "e": `
+  }, {
+    cell: "e",
+    script: `
       <!-- TradingView Widget BEGIN -->
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
@@ -53,7 +60,9 @@ export const getScripts = (): {[key: string]: string} => {
         </script>
       </div>
       <!-- TradingView Widget END -->`,
-    "b": `
+  }, {
+    cell: "b",
+    script: `
       <!-- TradingView Widget BEGIN -->
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
@@ -83,7 +92,9 @@ export const getScripts = (): {[key: string]: string} => {
         </script>
       </div>
       <!-- TradingView Widget END -->`,
-    "a": `
+  }, {
+    cell: "a",
+    script: `
       <!-- TradingView Widget BEGIN -->
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
@@ -107,7 +118,9 @@ export const getScripts = (): {[key: string]: string} => {
         </script>
       </div>
       <!-- TradingView Widget END -->`,
-    "top": `
+  }, {
+    cell: "top", 
+    script: `
       <!-- TradingView Widget BEGIN -->
       <div class="tradingview-widget-container">
         <div class="tradingview-widget-container__widget"></div>
@@ -144,5 +157,5 @@ export const getScripts = (): {[key: string]: string} => {
         </script>
       </div>
       <!-- TradingView Widget END -->`
-  }
+  }]
 }
